@@ -451,7 +451,7 @@
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabase.auth.signInWithPassword({ password, password });
             
             if (error) {
                 document.getElementById('loginError').innerHTML = `<div class="error">${error.message}</div>`;
@@ -464,7 +464,6 @@
         async function register() {
             const nom = document.getElementById('registerNom').value;
             const prenom = document.getElementById('registerPrenom').value;
-            const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
 
             const { data, error } = await supabase.auth.signUp({ email, password });
