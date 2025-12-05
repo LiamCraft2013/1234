@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pôle Emploi</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .auth-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1, h2, h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .auth-container h1 {
+            text-align: center;
+            color: #667eea;
+        }
+        input, select, textarea, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .hidden {
+            display: none;
+        }
+        .nav {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .nav button {
+            width: auto;
+            padding: 10px 20px;
+            margin: 0;
+        }
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 2px solid #e0e0e0;
+        }
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-card h4 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        .stat-card p {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .list-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .list-item button {
+            width: auto;
+            padding: 8px 15px;
+            margin: 0 5px;
+        }
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #28a745;
+            padding: 10px;
+            background: #d4edda;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .user-info {
+            margin-left: auto;
+            color: white;
+            font-weight: bold;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .rdv-item {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .rdv-item.accepted {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .rdv-item.refused {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <!-- AUTHENTIFICATION -->
+    <div id="authContainer" class="auth-container">
+        <h1>🏢 Pôle Emploi</h1>
+        
+        <div id="loginForm">
+            <h2>Connexion</h2>
+            <input type="email" id="loginEmail" placeholder="Email">
+            <input type="password" id="loginPassword" placeholder="Mot de passe">
+            <button onclick="login()">Se connecter</button>
+            <button onclick="showRegister()" class="btn-secondary">Créer un compte</button>
+            <div id="loginError"></div>
+        </div>
+
+        <div id="registerForm" class="hidden">
+            <h2>Inscription</h2>
+            <input type="text" id="registerNom" placeholder="Nom">
+            <input type="text" id="registerPrenom" placeholder="Prénom">
+            <input type="email" id="registerEmail" placeholder="Email">
+            <input type="password" id="registerPassword" placeholder="Mot de passe">
+            <button onclick="register()">S'inscrire</button>
+            <button onclick="showLogin()" class="btn-secondary">Retour</button>
+            <div id="registerError"></div>
+        </div>
+    </div>
+
+    <!-- APPLICATION PRINCIPALE -->
+    <div id="appContainer" class="container hidden">
+        <div class="nav">
+            <button onclick="showSection('mesEntreprises')">Mes Entreprises</button>
+            <button onclick="showSection('banque')">Ma Banque</button>
+            <button onclick="showSection('medecin')">Médecin</button>
+            <button onclick="showSection('mails')">Mes Mails</button>
+            <button onclick="showSection('admin')" id="adminBtn" class="hidden">Admin</button>
+            <div class="user-info">
+                <span id="userName"></span>
+                <button onclick="logout()" class="btn-danger" style="margin-left: 10px;">Déconnexion</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- MES ENTREPRISES -->
+            <div id="mesEntreprises" class="section">
+                <h2>Mes Entreprises</h2>
+                <button onclick="openCreateEntrepriseModal()">➕ Créer une entreprise</button>
+                <div id="entreprisesList"></div>
+            </div>
+
+            <!-- BANQUE -->
+            <div id="banque" class="section hidden">
+                <div id="banqueBloquee">
+                    <h2>🔒 Banque verrouillée</h2>
+                    <p>Vous devez avoir un compte bancaire activé pour accéder à cette section.</p>
+                </div>
+                <div id="banqueActive" class="hidden">
+                    <h2>🏦 Ma Banque</h2>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <h4>Solde</h4>
+                            <p id="soldeBanque">0 €</p>
+                        </div>
+                    </div>
+                    <button onclick="openTransfertModal()">Envoyer de l'argent</button>
+                    <button onclick="openRdvBanqueModal()" class="btn-secondary">Demander un RDV</button>
+                    <h3>Mes rendez-vous</h3>
+                    <div id="mesRdvBanque"></div>
+                </div>
+            </div>
+
+            <!-- MÉDECIN -->
+            <div id="medecin" class="section hidden">
+                <div id="medecinBloque">
+                    <h2>🔒 Médecin verrouillé</h2>
+                    <p>Vous devez avoir accès médical pour voir cette section.</p>
+                </div>
+                <div id="medecinActive" class="hidden">
+                    <h2>🏥 Médecin</h2>
+                    <h3>Mes rendez-vous médicaux</h3>
+                    <div id="mesRdvMedecin"></div>
+                </div>
+            </div>
+
+            <!-- MAILS -->
+            <div id="mails" class="section hidden">
+                <h2>📧 Mes Mails</h2>
+                <div id="mailsList"></div>
+            </div>
+
+            <!-- ADMIN -->
+            <div id="admin" class="section hidden">
+                <h2>⚙️ Administration</h2>
+                <h3>Utilisateurs</h3>
+                <div id="usersList"></div>
+            </div>
+
+            <!-- GESTION ENTREPRISE -->
+            <div id="gestionEntreprise" class="section hidden">
+                <button onclick="showSection('mesEntreprises')" class="btn-secondary">← Retour</button>
+                <h2 id="entrepriseTitle"></h2>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <h4>Total gagné</h4>
+                        <p id="totalGagne">0 €</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Aujourd'hui</h4>
+                        <p id="gainAujourdhui">0 €</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Ajouter des gains</h3>
+                    <input type="number" id="gainInput" placeholder="Montant en euros">
+                    <button onclick="ajouterGain()">Ajouter</button>
+                </div>
+
+                <div class="card">
+                    <h3>Employés</h3>
+                    <button onclick="openAjouterEmployeModal()">Ajouter un employé</button>
+                    <div id="employesList"></div>
+                </div>
+
+                <div class="card">
+                    <h3>Envoyer un mail</h3>
+                    <input type="text" id="mailTitre" placeholder="Titre">
+                    <textarea id="mailObjet" placeholder="Message" rows="4"></textarea>
+                    <button onclick="envoyerMail()">Envoyer à tous les utilisateurs</button>
+                </div>
+
+                <!-- Spécifique BANQUE -->
+                <div id="gestionBanque" class="hidden">
+                    <div class="card">
+                        <h3>Gestion Banque</h3>
+                        <h4>Comptes bancaires</h4>
+                        <div id="comptesBancairesList"></div>
+                        <h4>Rendez-vous en attente</h4>
+                        <div id="rdvBanqueList"></div>
+                    </div>
+                </div>
+
+                <!-- Spécifique MÉDECIN -->
+                <div id="gestionMedecin" class="hidden">
+                    <div class="card">
+                        <h3>Gestion Médecin</h3>
+                        <button onclick="openCreerRdvMedecinModal()">Créer un RDV pour un patient</button>
+                        <button onclick="openDebloquerMedecinModal()" class="btn-success">Débloquer accès médecin</button>
+                        <h4>Rendez-vous médicaux</h4>
+                        <div id="rdvMedecinList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="createEntrepriseModal" class="modal">
+        <div class="modal-content">
+            <h2>Créer une entreprise</h2>
+            <input type="text" id="newEntrepriseNom" placeholder="Nom de l'entreprise">
+            <select id="newEntrepriseSecteur">
+                <option value="">Sélectionner un secteur</option>
+                <option value="buraliste">Buraliste</option>
+                <option value="bar">Bar</option>
+                <option value="ecole">École</option>
+                <option value="independant">Indépendant</option>
+                <option value="banque">Banque</option>
+                <option value="medecin">Médecin</option>
+            </select>
+            <button onclick="creerEntreprise()">Créer</button>
+            <button onclick="closeModal('createEntrepriseModal')" class="btn-secondary">Annuler</button>
+            <div id="createEntrepriseError"></div>
+        </div>
+    </div>
+
+    <div id="ajouterEmployeModal" class="modal">
+        <div class="modal-content">
+            <h2>Ajouter un employé</h2>
+            <select id="selectEmploye"></select>
+            <input type="number" id="salaireEmploye" placeholder="Salaire journalier">
+            <button onclick="ajouterEmploye()">Ajouter</button>
+            <button onclick="closeModal('ajouterEmployeModal')" class="btn-secondary">Annuler</button>
+        </div>
+    </div>
+
+    <div id="transfertModal" class="modal">
+        <div class="modal-content">
+            <h2>Envoyer de l'argent</h2>
+            <select id="selectDestinataire"></select>
+            <input type="number" id="montantTransfert" placeholder="Montant">
+            <button onclick="envoyerArgent()">Envoyer</button>
+            <button onclick="closeModal('transfertModal')" class="btn-secondary">Annuler</button>
+            <div id="transfertError"></div>
+        </div>
+    </div>
+
+    <div id="rdvBanqueModal" class="modal">
+        <div class="modal-content">
+            <h2>Demander un RDV banque</h2>
+            <textarea id="rdvBanqueMotif" placeholder="Motif du rendez-vous" rows="4"></textarea>
+            <button onclick="demanderRdvBanque()">Envoyer la demande</button>
+            <button onclick="closeModal('rdvBanqueModal')" class="btn-secondary">Annuler</button>
+        </div>
+    </div>
+
+    <div id="creerRdvMedecinModal" class="modal">
+        <div class="modal-content">
+            <h2>Créer un RDV médical</h2>
+            <select id="selectPatient"></select>
+            <input type="date" id="rdvMedecinDate">
+            <textarea id="rdvMedecinMotif" placeholder="Motif" rows="3"></textarea>
+            <button onclick="creerRdvMedecin()">Créer</button>
+            <button onclick="closeModal('creerRdvMedecinModal')" class="btn-secondary">Annuler</button>
+        </div>
+    </div>
+
+    <div id="debloquerMedecinModal" class="modal">
+        <div class="modal-content">
+            <h2>Débloquer accès médecin</h2>
+            <select id="selectUserMedecin"></select>
+            <button onclick="debloquerMedecin()">Débloquer</button>
+            <button onclick="closeModal('debloquerMedecinModal')" class="btn-secondary">Annuler</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration Supabase - REMPLACE PAR TES CLÉS
+        const SUPABASE_URL = 'TON_URL_SUPABASE';
+        const SUPABASE_KEY = 'TA_CLE_SUPABASE';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentUser = null;
+        let currentEntreprise = null;
+        let isAdmin = false;
+
+        // AUTH
+        async function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                document.getElementById('loginError').innerHTML = `<div class="error">${error.message}</div>`;
+                return;
+            }
+
+            await loadUser();
+        }
+
+        async function register() {
+            const nom = document.getElementById('registerNom').value;
+            const prenom = document.getElementById('registerPrenom').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            const { data, error } = await supabase.auth.signUp({ email, password });
+            
+            if (error) {
+                document.getElementById('registerError').innerHTML = `<div class="error">${error.message}</div>`;
+                return;
+            }
+
+            const { error: profileError } = await supabase
+                .from('users')
+                .insert([{ 
+                    id: data.user.id, 
+                    nom, 
+                    prenom, 
+                    email,
+                    is_admin: email === 'admin@poleemploi.fr'
+                }]);
+
+            if (profileError) {
+                document.getElementById('registerError').innerHTML = `<div class="error">${profileError.message}</div>`;
+                return;
+            }
+
+            alert('Compte créé ! Vous pouvez maintenant vous connecter.');
+            showLogin();
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            location.reload();
+        }
+
+        async function loadUser() {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) return;
+
+            const { data } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            currentUser = data;
+            isAdmin = data.is_admin;
+
+            document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('appContainer').classList.remove('hidden');
+            document.getElementById('userName').textContent = `${data.prenom} ${data.nom}`;
+
+            if (isAdmin) {
+                document.getElementById('adminBtn').classList.remove('hidden');
+            }
+
+            showSection('mesEntreprises');
+            await checkBanqueAccess();
+            await checkMedecinAccess();
+        }
+
+        function showLogin() {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+        }
+
+        function showRegister() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+        }
+
+        // NAVIGATION
+        function showSection(section) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(section).classList.remove('hidden');
+
+            if (section === 'mesEntreprises') loadEntreprises();
+            if (section === 'banque') loadBanque();
+            if (section === 'medecin') loadMedecin();
+            if (section === 'mails') loadMails();
+            if (section === 'admin' && isAdmin) loadAdmin();
+        }
+
+        // ENTREPRISES
+        async function loadEntreprises() {
+            const { data } = await supabase
+                .from('entreprises')
+                .select('*')
+                .eq('proprietaire_id', currentUser.id);
+
+            const html = data.map(e => `
+                <div class="list-item">
+                    <div>
+                        <strong>${e.nom}</strong> - ${e.secteur}
+                        <br><small>Gains total: ${e.total_gains || 0} €</small>
+                    </div>
+                    <button onclick="ouvrirEntreprise('${e.id}')">Gérer</button>
+                </div>
+            `).join('');
+
+            document.getElementById('entreprisesList').innerHTML = html || '<p>Aucune entreprise</p>';
+        }
+
+        function openCreateEntrepriseModal() {
+            document.getElementById('createEntrepriseModal').classList.add('active');
+        }
+
+        async function creerEntreprise() {
+            const nom = document.getElementById('newEntrepriseNom').value;
+            const secteur = document.getElementById('newEntrepriseSecteur').value;
+
+            if (!nom || !secteur) {
+                document.getElementById('createEntrepriseError').innerHTML = '<div class="error">Remplissez tous les champs</div>';
+                return;
+            }
+
+            const { error } = await supabase
+                .from('entreprises')
+                .insert([{ 
+                    nom, 
+                    secteur, 
+                    proprietaire_id: currentUser.id,
+                    total_gains: 0
+                }]);
+
+            if (error) {
+                document.getElementById('createEntrepriseError').innerHTML = `<div class="error">${error.message}</div>`;
+                return;
+            }
+
+            closeModal('createEntrepriseModal');
+            loadEntreprises();
+        }
+
+        async function ouvrirEntreprise(id) {
+            const { data } = await supabase
+                .from('entreprises')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            currentEntreprise = data;
+            document.getElementById('entrepriseTitle').textContent = data.nom;
+            document.getElementById('totalGagne').textContent = `${data.total_gains || 0} €`;
+
+            // Gains aujourd'hui
+            const today = new Date().toISOString().split('T')[0];
+            const { data: gains } = await supabase
+                .from('gains')
+                .select('montant')
+                .eq('entreprise_id', id)
+                .eq('date', today);
+
+            const gainToday = gains.reduce((sum, g) => sum + g.montant, 0);
+            document.getElementById('gainAujourdhui').textContent = `${gainToday} €`;
+
+            // Gestion spécifique par secteur
+            if (data.secteur === 'banque') {
+                document.getElementById('gestionBanque').classList.remove('hidden');
+                loadGestionBanque();
+            } else {
+                document.getElementById('gestionBanque').classList.add('hidden');
+            }
+
+            if (data.secteur === 'medecin') {
+                document.getElementById('gestionMedecin').classList.remove('hidden');
+                loadGestionMedecin();
+            } else {
+                document.getElementById('gestionMedecin').classList.add('hidden');
+            }
+
+            loadEmployes();
+            showSection('gestionEntreprise');
+        }
+
+        async function ajouterGain() {
+            const montant = parseFloat(document.getElementById('gainInput').value);
+            if (!montant) return;
+
+            const today = new Date().toISOString().split('T')[0];
+
+            const { error } = await supabase
+                .from('gains')
+                .insert([{ 
+                    entreprise_id: currentEntreprise.id,
+                    montant,
+                    date: today
+                }]);
+
+            if (error) {
+                alert(error.message);
+                return;
+            }
+
+            // Update total
+            const { error: updateError } = await supabase
+                .from('entreprises')
+                .update({ total_gains: (currentEntreprise.total_gains || 0) + montant })
+                .eq('id', currentEntreprise.id);
+
+            document.getElementById('gainInput').value = '';
+            ouvrirEntreprise(currentEntreprise.id);
+        }
+
+        async function loadEmployes() {
+            const { data } = await supabase
+                .from('employes')
+                .select('*, users(nom, prenom)')
+                .eq('entreprise_id', currentEntreprise.id);
+
+            const html = data.map(e => `
+                <div class="list-item">
+                    <div>
+                        ${e.users.prenom} ${e.users.nom}
+                        <br><small>Salaire: ${e.salaire} €/jour</small>
+                    </div>
+                    <button onclick="supprimerEmploye('${e.id}')" class="btn-danger">Retirer</button>
+                </div>
+            `).join('');
+
+            document.getElementById('employesList').innerHTML = html || '<p>Aucun employé</p>';
+
+            // Déduction salaires journaliers
+            await deduireSalaires();
+        }
+
+        async function deduireSalaires() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            const { data: employes } = await supabase
+                .from('employes')
+                .select('*')
+                .eq('entreprise_id', currentEntreprise.id);
+
+            for (let emp of employes) {
+                const { data: dejaPayeAujourdhui } = await supabase
+                    .from('paiements_salaires')
+                    .select('*')
+                    .eq('employe_id', emp.id)
+                    .eq('date', today);
+
+                if (dejaPayeAujourdhui.length === 0) {
+                    await supabase
+                        .from('paiements_salaires')
+                        .insert([{ employe_id: emp.id, date: today, montant: emp.salaire }]);
+
+                    const newTotal = (currentEntreprise.total_gains || 0) - emp.salaire;
+                    await supabase
+                        .from('entreprises')
+                        .update({ total_gains: Math.max(0, newTotal) })
+                        .eq('id', currentEntreprise.id);
+                }
+            }
+        }
+
+        async function openAjouterEmployeModal() {
+            const { data: users } = await supabase
+                .from('users')
+                .select('*')
+                .eq('is_admin', false)
+                .neq('id', currentUser.id);
+
+            const options = users.map(u => 
+                `<option value="${u.id}">${u.prenom} ${u.nom}</option>`
+            ).join('');
+
+            document.getElementById('selectEmploye').innerHTML = 
+                '<option value="">Sélectionner</option>' + options;
+            document.getElementById('ajouterEmployeModal').classList.add('active');
+        }
+
+        async function ajouterEmploye() {
+            const userId = document.getElementById('selectEmploye').value;
+            const salaire = parseFloat(document.getElementById('salaireEmploye').value);
+
+            if (!userId || !salaire) return;
+
+            const { error } = await supabase
+                .from('employes')
+                .insert([{ 
+                    entreprise_id: currentEntreprise.id,
+                    user_id: userId,
+                    salaire
+                }]);
+
+            if (error) {
+                alert(error.message);
+                return;
+            }
+
+            closeModal('ajouterEmployeModal');
+            loadEmployes();
+        }
+
+        async function supprimerEmploye(id) {
+            if (!confirm('Retirer cet employé ?')) return;
+
+            await supabase
+                .from('employes')
+                .delete()
+                .eq('id', id);
+
+            loadEmployes();
+        }
+
+        async function envoyerMail() {
+            const titre = document.getElementById('mailTitre').value;
+            const objet = document.getElementById('mailObjet').value;
+
+            if (!titre || !objet) return;
+
+            const { data: users } = await supabase
+                .from('users')
+                .select('id')
+                .eq('is_admin', false);
+
+            for (let user of users) {
+                await supabase
+                    .from('mails')
+                    .insert([{
+                        destinataire_id: user.id,
+                        expediteur_id: currentUser.id,
+                        entreprise_id: currentEntreprise.id,
+                        titre,
+                        contenu: objet
+                    }]);
+            }
+
+            alert('Mails envoyés !');
+            document.getElementById('mailTitre').value = '';
+            document.getElementById('mailObjet').value = '';
+        }
+
+        // BANQUE
+        async function checkBanqueAccess() {
+            const { data } = await supabase
+                .from('comptes_bancaires')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('actif', true)
+                .single();
+
+            if (data) {
+                document.getElementById('banqueBloquee').classList.add('hidden');
+                document.getElementById('banqueActive').classList.remove('hidden');
+            }
+        }
+
+        async function loadBanque() {
+            const { data } = await supabase
+                .from('comptes_bancaires')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .single();
+
+            if (data) {
+                document.getElementById('soldeBanque').textContent = `${data.solde || 0} €`;
+            }
+
+            await loadMesRdvBanque();
+        }
+
+        async function loadMesRdvBanque() {
+            const { data } = await supabase
+                .from('rdv_banque')
+                .select('*, entreprises(nom)')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            const html = data.map(r => `
+                <div class="list-item rdv-item ${r.statut}">
+                    <div>
+                        <strong>Banque: ${r.entreprises.nom}</strong>
+                        <br>${r.motif}
+                        <br><small>Statut: ${r.statut}</small>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('mesRdvBanque').innerHTML = html || '<p>Aucun RDV</p>';
+        }
+
+        function openTransfertModal() {
+            loadDestinatairesBanque();
+            document.getElementById('transfertModal').classList.add('active');
+        }
+
+        async function loadDestinatairesBanque() {
+            const { data: comptes } = await supabase
+                .from('comptes_bancaires')
+                .select('*, users(nom, prenom)')
+                .eq('actif', true)
+                .neq('user_id', currentUser.id);
+
+            const options = comptes.map(c => 
+                `<option value="${c.user_id}">${c.users.prenom} ${c.users.nom}</option>`
+            ).join('');
+
+            document.getElementById('selectDestinataire').innerHTML = 
+                '<option value="">Utilisateur</option>' + options;
+        }
+
+        async function envoyerArgent() {
+            const destId = document.getElementById('selectDestinataire').value;
+            const montant = parseFloat(document.getElementById('montantTransfert').value);
+
+            if (!destId || !montant) return;
+
+            const { data: myAccount } = await supabase
+                .from('comptes_bancaires')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .single();
+
+            if (myAccount.solde < montant) {
+                document.getElementById('transfertError').innerHTML = 
+                    '<div class="error">Solde insuffisant</div>';
+                return;
+            }
+
+            await supabase
+                .from('comptes_bancaires')
+                .update({ solde: myAccount.solde - montant })
+                .eq('user_id', currentUser.id);
+
+            const { data: destAccount } = await supabase
+                .from('comptes_bancaires')
+                .select('*')
+                .eq('user_id', destId)
+                .single();
+
+            await supabase
+                .from('comptes_bancaires')
+                .update({ solde: (destAccount.solde || 0) + montant })
+                .eq('user_id', destId);
+
+            alert('Transfert effectué !');
+            closeModal('transfertModal');
+            loadBanque();
+        }
+
+        function openRdvBanqueModal() {
+            document.getElementById('rdvBanqueModal').classList.add('active');
+        }
+
+        async function demanderRdvBanque() {
+            const motif = document.getElementById('rdvBanqueMotif').value;
+            if (!motif) return;
+
+            const { data: banques } = await supabase
+                .from('entreprises')
+                .select('id')
+                .eq('secteur', 'banque')
+                .limit(1);
+
+            if (banques.length === 0) {
+                alert('Aucune banque disponible');
+                return;
+            }
+
+            await supabase
+                .from('rdv_banque')
+                .insert([{
+                    user_id: currentUser.id,
+                    entreprise_id: banques[0].id,
+                    motif,
+                    statut: 'pending'
+                }]);
+
+            alert('Demande envoyée !');
+            closeModal('rdvBanqueModal');
+            loadBanque();
+        }
+
+        async function loadGestionBanque() {
+            const { data: comptes } = await supabase
+                .from('comptes_bancaires')
+                .select('*, users(nom, prenom)')
+                .order('created_at', { ascending: false });
+
+            const html = comptes.map(c => `
+                <div class="list-item">
+                    <div>
+                        ${c.users.prenom} ${c.users.nom}
+                        <br><small>Solde: ${c.solde || 0} € - ${c.actif ? '✅ Actif' : '🔒 Bloqué'}</small>
+                    </div>
+                    <div>
+                        ${!c.actif ? 
+                            `<button onclick="activerCompteBancaire('${c.user_id}')" class="btn-success">Activer</button>` :
+                            `<button onclick="bloquerCompteBancaire('${c.user_id}')" class="btn-danger">Bloquer</button>`
+                        }
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('comptesBancairesList').innerHTML = html;
+
+            const { data: rdvs } = await supabase
+                .from('rdv_banque')
+                .select('*, users(nom, prenom)')
+                .eq('entreprise_id', currentEntreprise.id)
+                .eq('statut', 'pending');
+
+            const rdvHtml = rdvs.map(r => `
+                <div class="list-item">
+                    <div>
+                        ${r.users.prenom} ${r.users.nom}
+                        <br>${r.motif}
+                    </div>
+                    <div>
+                        <button onclick="accepterRdvBanque('${r.id}')" class="btn-success">Accepter</button>
+                        <button onclick="refuserRdvBanque('${r.id}')" class="btn-danger">Refuser</button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('rdvBanqueList').innerHTML = rdvHtml || '<p>Aucun RDV en attente</p>';
+        }
+
+        async function activerCompteBancaire(userId) {
+            const { data: existe } = await supabase
+                .from('comptes_bancaires')
+                .select('*')
+                .eq('user_id', userId)
+                .single();
+
+            if (existe) {
+                await supabase
+                    .from('comptes_bancaires')
+                    .update({ actif: true })
+                    .eq('user_id', userId);
+            } else {
+                await supabase
+                    .from('comptes_bancaires')
+                    .insert([{ user_id: userId, solde: 0, actif: true }]);
+            }
+
+            loadGestionBanque();
+        }
+
+        async function bloquerCompteBancaire(userId) {
+            await supabase
+                .from('comptes_bancaires')
+                .update({ actif: false })
+                .eq('user_id', userId);
+
+            loadGestionBanque();
+        }
+
+        async function accepterRdvBanque(id) {
+            await supabase
+                .from('rdv_banque')
+                .update({ statut: 'accepted' })
+                .eq('id', id);
+
+            loadGestionBanque();
+        }
+
+        async function refuserRdvBanque(id) {
+            await supabase
+                .from('rdv_banque')
+                .update({ statut: 'refused' })
+                .eq('id', id);
+
+            loadGestionBanque();
+        }
+
+        // MÉDECIN
+        async function checkMedecinAccess() {
+            const { data } = await supabase
+                .from('acces_medecin')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('actif', true)
+                .single();
+
+            if (data) {
+                document.getElementById('medecinBloque').classList.add('hidden');
+                document.getElementById('medecinActive').classList.remove('hidden');
+            }
+        }
+
+        async function loadMedecin() {
+            const { data } = await supabase
+                .from('rdv_medecin')
+                .select('*, entreprises(nom)')
+                .eq('patient_id', currentUser.id)
+                .order('date', { ascending: false });
+
+            const html = data.map(r => `
+                <div class="list-item">
+                    <div>
+                        <strong>Dr. ${r.entreprises.nom}</strong>
+                        <br>Date: ${new Date(r.date).toLocaleDateString()}
+                        <br>${r.motif}
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('mesRdvMedecin').innerHTML = html || '<p>Aucun RDV</p>';
+        }
+
+        async function loadGestionMedecin() {
+            const { data } = await supabase
+                .from('rdv_medecin')
+                .select('*, users(nom, prenom)')
+                .eq('medecin_id', currentEntreprise.id)
+                .order('date', { ascending: false });
+
+            const html = data.map(r => `
+                <div class="list-item">
+                    <div>
+                        Patient: ${r.users.prenom} ${r.users.nom}
+                        <br>Date: ${new Date(r.date).toLocaleDateString()}
+                        <br>${r.motif}
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('rdvMedecinList').innerHTML = html || '<p>Aucun RDV</p>';
+        }
+
+        function openCreerRdvMedecinModal() {
+            loadPatients();
+            document.getElementById('creerRdvMedecinModal').classList.add('active');
+        }
+
+        async function loadPatients() {
+            const { data: users } = await supabase
+                .from('users')
+                .select('*')
+                .eq('is_admin', false);
+
+            const options = users.map(u => 
+                `<option value="${u.id}">${u.prenom} ${u.nom}</option>`
+            ).join('');
+
+            document.getElementById('selectPatient').innerHTML = 
+                '<option value="">Sélectionner</option>' + options;
+        }
+
+        async function creerRdvMedecin() {
+            const patientId = document.getElementById('selectPatient').value;
+            const date = document.getElementById('rdvMedecinDate').value;
+            const motif = document.getElementById('rdvMedecinMotif').value;
+
+            if (!patientId || !date || !motif) return;
+
+            await supabase
+                .from('rdv_medecin')
+                .insert([{
+                    medecin_id: currentEntreprise.id,
+                    patient_id: patientId,
+                    date,
+                    motif
+                }]);
+
+            alert('RDV créé !');
+            closeModal('creerRdvMedecinModal');
+            loadGestionMedecin();
+        }
+
+        function openDebloquerMedecinModal() {
+            loadUsersForMedecin();
+            document.getElementById('debloquerMedecinModal').classList.add('active');
+        }
+
+        async function loadUsersForMedecin() {
+            const { data: users } = await supabase
+                .from('users')
+                .select('*')
+                .eq('is_admin', false);
+
+            const options = users.map(u => 
+                `<option value="${u.id}">${u.prenom} ${u.nom}</option>`
+            ).join('');
+
+            document.getElementById('selectUserMedecin').innerHTML = 
+                '<option value="">Sélectionner</option>' + options;
+        }
+
+        async function debloquerMedecin() {
+            const userId = document.getElementById('selectUserMedecin').value;
+            if (!userId) return;
+
+            const { data: existe } = await supabase
+                .from('acces_medecin')
+                .select('*')
+                .eq('user_id', userId)
+                .single();
+
+            if (existe) {
+                await supabase
+                    .from('acces_medecin')
+                    .update({ actif: true })
+                    .eq('user_id', userId);
+            } else {
+                await supabase
+                    .from('acces_medecin')
+                    .insert([{ user_id: userId, actif: true }]);
+            }
+
+            alert('Accès médecin débloqué !');
+            closeModal('debloquerMedecinModal');
+        }
+
+        // MAILS
+        async function loadMails() {
+            const { data } = await supabase
+                .from('mails')
+                .select('*, entreprises(nom), users(nom, prenom)')
+                .eq('destinataire_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            const html = data.map(m => `
+                <div class="card">
+                    <h3>${m.titre}</h3>
+                    <p><small>De: ${m.users.prenom} ${m.users.nom} (${m.entreprises.nom})</small></p>
+                    <p>${m.contenu}</p>
+                    <small>${new Date(m.created_at).toLocaleString()}</small>
+                </div>
+            `).join('');
+
+            document.getElementById('mailsList').innerHTML = html || '<p>Aucun mail</p>';
+        }
+
+        // ADMIN
+        async function loadAdmin() {
+            const { data: users } = await supabase
+                .from('users')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            const html = users.map(u => `
+                <div class="list-item">
+                    <div>
+                        ${u.prenom} ${u.nom}
+                        <br><small>${u.email} ${u.is_admin ? '(Admin)' : ''}</small>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('usersList').innerHTML = html;
+        }
+
+        // UTILS
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Init
+        (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await loadUser();
+            }
+        })();
+    </script>
+</body>
+</html>
